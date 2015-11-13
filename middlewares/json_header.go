@@ -11,6 +11,6 @@ func NewJSONHeader() *JSONHeader {
 }
 
 func (JSONHeader) ServeHTTP(w http.ResponseWriter, req *http.Request, next http.HandlerFunc) {
-	w.Header().Set("Content-Type", "application/json;charset=utf8")
+	w.Header().Set("Content-Type", "application/json;charset=utf-8")
 	next(w, req)
 }
