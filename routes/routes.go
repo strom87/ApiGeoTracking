@@ -12,7 +12,7 @@ func setRoutes(router *mux.Router) {
 }
 
 func setWebsoketRoutes(router *mux.Router) {
-	router.Handle("/ws/geo-location", negroni.New(
+	router.Handle("/ws/geo-location/{id}", negroni.New(
 		websockets.NewLocationSocket(),
 	))
 }

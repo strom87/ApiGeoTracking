@@ -3,6 +3,7 @@ package websockets
 import (
 	"net/http"
 
+	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"github.com/strom87/ApiGeoTracking/core/logger"
 	"github.com/strom87/ApiGeoTracking/models"
@@ -27,17 +28,20 @@ func (s LocationSocket) ServeHTTP(w http.ResponseWriter, r *http.Request, next h
 	}
 	defer conn.Close()
 
+	id := mux.Vars(r)["id"]
+	s.addConnection(id, conn)
+
 	for {
 		model := models.GeoLocationModel{}
 		if err := websocket.ReadJSON(conn, &model); err != nil {
 			s.logger.Log("Conn read message error:", err)
+			for key, value := range s.connections {
+				if value == conn {
+					s.sendDisconnectedMessage(key)
+					break
+				}
+			}
 			return
-		}
-
-		s.addConnection(model.ID, conn)
-
-		if model.Long == 0.0 && model.Lat == 0.0 {
-			continue
 		}
 
 		s.sendLocationMessage(model)
