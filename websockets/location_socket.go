@@ -31,6 +31,10 @@ func (s LocationSocket) ServeHTTP(w http.ResponseWriter, r *http.Request, next h
 	}
 	defer conn.Close()
 
+	conn.SetReadLimit(maxMessageSize)
+	conn.SetReadDeadline(time.Now().Add(pongWait))
+	conn.SetPongHandler(func(string) error { conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+
 	id := mux.Vars(r)["id"]
 	s.addConnection(id, conn)
 
@@ -74,7 +78,7 @@ func (s LocationSocket) disconnect(conn *websocket.Conn) {
 
 func (s LocationSocket) startPing() {
 	go func() {
-		ticker := time.NewTicker(pingInterval)
+		ticker := time.NewTicker(pingPeriod)
 
 		for {
 			select {
