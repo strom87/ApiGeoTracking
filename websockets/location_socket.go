@@ -2,6 +2,7 @@ package websockets
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -12,12 +13,14 @@ import (
 // LocationSocket struct
 type LocationSocket struct {
 	logger      *logger.Logger
-	connections map[string]*websocket.Conn
+	connections map[*websocket.Conn]string
 }
 
 // NewLocationSocket pointer of LocationSocket
 func NewLocationSocket() *LocationSocket {
-	return &LocationSocket{logger: logger.NewLogger(), connections: map[string]*websocket.Conn{}}
+	location := &LocationSocket{logger: logger.NewLogger(), connections: map[*websocket.Conn]string{}}
+	location.startPing()
+	return location
 }
 
 // ServeHTTP handles web requests
@@ -35,41 +38,53 @@ func (s LocationSocket) ServeHTTP(w http.ResponseWriter, r *http.Request, next h
 		model := models.GeoLocationModel{}
 		if err := websocket.ReadJSON(conn, &model); err != nil {
 			s.logger.Log("Conn read message error:", err)
-			for key, value := range s.connections {
-				if value == conn {
-					s.sendDisconnectedMessage(key)
-					break
-				}
-			}
+			s.disconnect(conn)
 			return
 		}
 
-		s.sendLocationMessage(model)
+		s.sendLocationMessage(model, s.connections[conn])
 	}
 }
 
 func (s LocationSocket) addConnection(id string, conn *websocket.Conn) {
-	if _, ok := s.connections[id]; !ok {
-		s.connections[id] = conn
+	if _, ok := s.connections[conn]; !ok {
+		s.connections[conn] = id
 	}
 }
 
-func (s LocationSocket) sendLocationMessage(v interface{}) {
-	for key, conn := range s.connections {
-		if err := conn.WriteJSON(v); err != nil {
-			delete(s.connections, key)
-			s.sendDisconnectedMessage(key)
-		}
-	}
-}
-
-func (s LocationSocket) sendDisconnectedMessage(id string) {
-	model := models.GeoLocationModel{ID: id, Disconnected: true}
-
-	for key, conn := range s.connections {
+func (s LocationSocket) sendLocationMessage(model models.GeoLocationModel, id string) {
+	model.ID = id
+	for conn := range s.connections {
 		if err := conn.WriteJSON(model); err != nil {
-			delete(s.connections, key)
-			s.sendDisconnectedMessage(key)
+			s.disconnect(conn)
 		}
 	}
+}
+
+func (s LocationSocket) disconnect(conn *websocket.Conn) {
+	model := models.GeoLocationModel{ID: s.connections[conn], Disconnected: true}
+	delete(s.connections, conn)
+
+	for conn := range s.connections {
+		if err := conn.WriteJSON(model); err != nil {
+			s.disconnect(conn)
+		}
+	}
+}
+
+func (s LocationSocket) startPing() {
+	go func() {
+		ticker := time.NewTicker(pingInterval)
+
+		for {
+			select {
+			case <-ticker.C:
+				for conn := range s.connections {
+					if err := conn.WriteMessage(websocket.PingMessage, []byte{}); err != nil {
+						s.disconnect(conn)
+					}
+				}
+			}
+		}
+	}()
 }
