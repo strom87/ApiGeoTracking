@@ -8,6 +8,7 @@ import (
 )
 
 func setRoutes(router *mux.Router) {
+	homeRoutes(router)
 	authRoutes(router)
 }
 
