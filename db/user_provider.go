@@ -18,7 +18,7 @@ func (p UserProvider) FindByID(id bson.ObjectId) (*User, error) {
 	db := p.Connection.GetCollection(p.Collection)
 
 	user := &User{}
-	if err := db.Find(bson.M{"id": id}).One(user); err != nil {
+	if err := db.Find(bson.M{"_id": id}).One(user); err != nil {
 		return nil, err
 	}
 
