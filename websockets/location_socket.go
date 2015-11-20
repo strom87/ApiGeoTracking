@@ -16,8 +16,10 @@ import (
 
 // LocationInfo struct
 type LocationInfo struct {
-	ID   string
-	Name string
+	ID         string
+	Name       string
+	IconImage  string
+	ThumbImage string
 }
 
 // LocationSocket struct
@@ -68,7 +70,7 @@ func (s LocationSocket) ServeHTTP(w http.ResponseWriter, r *http.Request, next h
 		return
 	}
 
-	s.addConnection(LocationInfo{ID: id, Name: user.Name}, conn)
+	s.addConnection(LocationInfo{ID: id, Name: user.Name, IconImage: user.Image.Icon, ThumbImage: user.Image.Thumb}, conn)
 
 	for {
 		model := models.GeoLocationModel{}
@@ -91,6 +93,9 @@ func (s LocationSocket) addConnection(loc LocationInfo, conn *websocket.Conn) {
 func (s LocationSocket) sendLocationMessage(model models.GeoLocationModel, loc LocationInfo) {
 	model.ID = loc.ID
 	model.Name = loc.Name
+	model.Icon = loc.IconImage
+	model.Thumb = loc.ThumbImage
+	
 	for conn := range s.connections {
 		if err := conn.WriteJSON(model); err != nil {
 			s.disconnect(conn)

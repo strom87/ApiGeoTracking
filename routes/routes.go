@@ -10,6 +10,7 @@ import (
 func setRoutes(router *mux.Router) {
 	homeRoutes(router)
 	authRoutes(router)
+	fileServeRoutes(router)
 }
 
 func setWebsoketRoutes(router *mux.Router) {
